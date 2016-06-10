@@ -1,0 +1,120 @@
+Basde on
+    '/home/h05/itpp/git/decoupler/lib/decoupler/tests/results/glm_frozen_autosat/01_00010_0.cdl'
+Like ...
+    dimensions:
+        bnds = 2 ;
+        latitude = 1152 ;
+        longitude = 1536 ;
+        model_level_number = 70 ;
+        time = 10 ;
+    variables:
+        float specific_humidity(time, model_level_number, latitude, longitude) ;
+            specific_humidity:_FillValue = -1.073742e+09f ;
+            specific_humidity:standard_name = "specific_humidity" ;
+            specific_humidity:units = "kg kg-1" ;
+            specific_humidity:um_stash_source = "m01s00i010" ;
+            specific_humidity:grid_mapping = "latitude_longitude" ;
+            specific_humidity:coordinates = "forecast_period forecast_reference_time level_height sigma surface_altitude" ;
+
+
+Existing decimates, then uses 'allclose'
+    - which defaults to rtol=1.e-5, atol=1.e-8
+
+
+
+data_context = {
+ 'a1': {
+    'shape': (10, 70, 1153, 1536),
+    'dims': ('time', 'model_level_number', 'latitude', 'longitude'),
+    'min_value': 
+    'max_value':
+    'total_value':
+    'sample_indices': = [(), (), (), ] ....
+    'sample_values': [
+        123.456789, 
+        3.141592653589793
+
+SIZES + EXAMPLE:
+    1.9M : lib/decoupler/tests/results/ukv_frozen_autosat/01_00010_0_?*?.npz
+
+    lib/decoupler/tests/results/ukv_frozen_autosat/01_00010_0.cdl
+        dimensions:
+            bnds = 2 ;
+            grid_latitude = 928 ;
+            grid_longitude = 744 ;
+            model_level_number = 71 ;
+            time = 2 ;
+        variables:
+            float specific_humidity(time, model_level_number, grid_latitude, grid_longitude) ;
+
+Full array size is 2*71*744*928 = 98Mpoints = 390Mb
+decimate --> 2*71*74*92 = 0.97 Mpts = 3.9Mb (but then saved compressed ??)
+
+pick points in all dimensions:
+Use /7 : 0123456 --> 1/7, 6/7, then 
+ 2 --> [0, 1]
+ 71 --> [10, 60]
+ 744 --> [106, 637]
+ 928 --> [132, 795]
+
+all of these --> 2^4 = 16 points
+add another ?N? points scattered "randomly" in the rest of the space
+
+If you made this (1/7, 3/7, 6/7)^4, get 81 points (rather a lot?)
+
+We could also add some end-limits, so
+ [1,6].[1,6].[1,6].[1,6]   : 16
+ + [0,7].[3].[3].[3]  : 2
+ + [3].[0,7].[3].[3]  : 2
+ + [3].[3].[0,7].[3]  : 2
+ + [3].[3].[3].[0,7]  : 2
+ + "odds"
+Choose an arbitrary number of "odds" based on prime numbers? ...
+target_spacing = total_size / spare_slots
+spacing = last_prime_below(target_spacing)
+  : cache these...
+
+
+#
+# FURTHER...
+#
+For mask arrays, and for 'categorical values' in general, the approach is not
+good, as only a small fraction of points may be affected by a change, and stats
+like the sum can easily match "coincidentally" for different results.
+E.G.
+ 00111111      01111111
+ 00001111      00011111
+ 00001111  vs  00001111
+ 00000111      00000011
+ 00000011      00000001
+
+ Corners, edge centres and sum-total all the same.
+
+So, **better stats** needed.
+Possible something like stats of the indices ??
+OR JUST : multiply result  by grid-indices
+ 0  1  1  1  vs   0  1  1  1
+ 0  0  1  1       0  1  1  1
+ 0  0  1  1       0  0  0  1
+ 0  0  0  1       0  0  0  1
+
+grid values:
+  1  2  3  4
+  5  6  7  8
+  9 10 11 12
+ 13 14 15 16
+
+ 0  2  3  4       0  2  3  4
+ 0  0  7  8  vs   0  6  7  8
+ 0  0 11 12       0  0  0 12
+ 0  0  0 16       0  0  0 16
+
+total = 8 vs 8
+grid-total = 63 vs 58
+
+Need to decide this by taking a sample of points and forming a set.
+*OR* could just do it anyway ???
+It's hard to imagine data that could generate a coincidental match for a
+grid sum over non-categorical data ??
+In fact, may as well do both.
+
