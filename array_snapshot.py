@@ -100,6 +100,12 @@ def control_method_and_kwargs(spec):
     return method, kwargs
 
 
+def filled(array, value=None):
+    if hasattr(array, 'filled'):
+        array = array.filled(value=value)
+    return array
+
+
 class ArraySnapshot(object):
     default_reltol = DEFAULT_RELTOL
     default_abstol = DEFAULT_ABSTOL
@@ -115,6 +121,9 @@ class ArraySnapshot(object):
 
     def __init__(self,
                  shape_or_array=None,
+                 #
+                 # TODO: should also record + respect dtype + is_masked ??
+                 #
                  mask=None,
                  stats_min=None, stats_max=None, stats_mean=None,
                  sample_point_indices=None, sample_point_values=None,
@@ -173,6 +182,7 @@ class ArraySnapshot(object):
             stats_array = array
         else:
             stats_array = method(array, **kwargs)
+        # N.B. the stats work with masks, so no need to fill here.
         self.stats_min = np.min(stats_array)
         self.stats_max = np.max(stats_array)
         self.stats_mean = np.mean(stats_array)
